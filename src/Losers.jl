@@ -1,5 +1,9 @@
 module Losers
+using Statistics
 
-# Write your package code here.
+include("./hausdorff.jl")
+
+export
+    hausdorff
 
 end

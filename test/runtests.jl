@@ -1,6 +1,2 @@
-using Losers
-using Test
-
-@testset "Losers.jl" begin
-    # Write your tests here.
-end
+include("imports.jl")
+include("hausdorff.jl")
