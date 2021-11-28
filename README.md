@@ -1,5 +1,5 @@
 # Losers
-The Biggest Losers all in one place
+Loss functions for segmentation tasks in the field of computer vision.
 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://Dale-Black.github.io/Losers.jl/dev)
 [![Build Status](https://github.com/Dale-Black/Losers.jl/workflows/CI/badge.svg)](https://github.com/Dale-Black/Losers.jl/actions)
