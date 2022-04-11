@@ -1,6 +1,5 @@
 function hausdorff(ŷ, y, ŷ_dtm, y_dtm)
-    M = (ŷ .- y) .^ 2 .* (ŷ_dtm .^ 2 .+ y_dtm .^ 2)
-    return loss = mean(M)
+    return mean((ŷ .- y) .^ 2 .* (ŷ_dtm .^ 2 .+ y_dtm .^ 2))
 end
 
 # TODO: make functional tullio.jl hausdorff loss
