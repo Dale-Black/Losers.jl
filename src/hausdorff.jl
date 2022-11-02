@@ -9,7 +9,7 @@ using InteractiveUtils
 begin
 	using Pkg
 	Pkg.activate("..")
-	using Revise, PlutoUI, Losers, PlutoTest
+	using Revise, PlutoUI, Losers, PlutoTest, Statistics
 end
 
 # ╔═╡ 6a0f40ae-375d-4bf5-99ce-9a8872090ad3
@@ -33,9 +33,8 @@ Loss function based on the Hausdorff metric. Measures the distance between the b
 
 [Citation](https://doi.org/10.48550/arXiv.1904.10030)
 """
-function hd_loss(ŷ, y, ŷ_dtm, y_dtm)
-    M = (ŷ .- y) .^ 2 .* (ŷ_dtm .^ 2 .+ y_dtm .^ 2)
-    return mean(M)
+function hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+    return loss = mean((ŷ .- y) .^ 2 .* (ŷ_dtm .^ 2 .+ y_dtm .^ 2))
 end
 
 # ╔═╡ 3d923edb-682c-4827-95f1-5f8a55a810e1
