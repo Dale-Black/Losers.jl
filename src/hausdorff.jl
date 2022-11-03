@@ -9,7 +9,7 @@ using InteractiveUtils
 begin
 	using Pkg
 	Pkg.activate("..")
-	using Revise, PlutoUI, Losers, PlutoTest, Statistics
+	using Revise, PlutoUI, Losers, PlutoTest, Statistics, Tullio
 end
 
 # ╔═╡ 6a0f40ae-375d-4bf5-99ce-9a8872090ad3
@@ -42,14 +42,49 @@ md"""
 ## Tullio
 """
 
+# ╔═╡ 7d69d599-a6cb-4034-beb9-894408534b92
+md"""
+### 1D
+"""
+
+# ╔═╡ c16e2ec5-6919-497b-bcc4-153fdb7470a1
+"""
+	hausdorff_tullio(ŷ::AbstractVector, y::AbstractVector, ŷ_dtm::AbstractVector, y_dtm::AbstractVector)
+	
+	hausdorff_tullio(ŷ::AbstractMatrix, y::AbstractMatrix, ŷ_dtm::AbstractMatrix, y_dtm::AbstractMatrix)
+
+	hausdorff_tullio(ŷ::AbstractArray, y::AbstractArray, ŷ_dtm::AbstractArray, y_dtm::AbstractArray)
+
+Loss function based on the Hausdorff metric and utilizes [Tullio.jl](https://github.com/mcabbott/Tullio.jl) for increased performance on 1D, 2D, or 3D arrays. Measures the distance between the boundaries of predicted array `ŷ` and ground truth array `y`. Both the predicted and ground truth arrays require a distance transform `ŷ_dtm` and `y_dtm` as inputs for this boundary operation to work.
+
+[Citation](https://doi.org/10.48550/arXiv.1904.10030)
+"""
+function hausdorff_tullio(ŷ::AbstractVector, y::AbstractVector, ŷ_dtm::AbstractVector, y_dtm::AbstractVector)
+    @tullio tot := (ŷ[i] .- y[i])^2 * (ŷ_dtm[i]^2 + y_dtm[i]^2)
+    return loss = tot / length(y)
+end
+
+# ╔═╡ 75e2e541-6f2e-4749-b0d3-f7096f1338e8
+md"""
+### 2D
+"""
+
 # ╔═╡ d09dac60-9593-4596-ab2e-2bbea1e15cf2
-# TODO: make functional tullio.jl hausdorff loss
-# function hausdorff(ŷ, y, ŷ_dtm, y_dtm)
-#     @tullio tot :=
-#         (ŷ[i, j, k, c, b] .- y[i, j, k, c, b])^2 *
-#         (ŷ_dtm[i, j, k, c, b]^2 + y_dtm[i, j, k, c, b]^2)
-#     return loss = tot / length(y)
-# end
+function hausdorff_tullio(ŷ::AbstractMatrix, y::AbstractMatrix, ŷ_dtm::AbstractMatrix, y_dtm::AbstractMatrix)
+    @tullio tot := (ŷ[i, j] .- y[i, j])^2 * (ŷ_dtm[i, j]^2 + y_dtm[i, j]^2)
+    return loss = tot / length(y)
+end
+
+# ╔═╡ 153f3c85-b8a3-4699-8b96-91ee166b1e9c
+md"""
+### 3D
+"""
+
+# ╔═╡ a864253e-5a3a-4fdc-89e8-bfcacaaf1a8b
+function hausdorff_tullio(ŷ::AbstractArray, y::AbstractArray, ŷ_dtm::AbstractArray, y_dtm::AbstractArray)
+    @tullio tot := (ŷ[i, j, k] .- y[i, j, k])^2 * (ŷ_dtm[i, j, k]^2 + y_dtm[i, j, k]^2)
+    return loss = tot / length(y)
+end
 
 # ╔═╡ 739ee739-f528-4e6f-a935-8c8306c8c8db
 md"""
@@ -63,6 +98,16 @@ md"""
 
 # ╔═╡ 29e10037-b40e-4838-bc0d-c7d04715b2d2
 n = rand(10:100)
+
+# ╔═╡ 65a2ad53-0f4f-41e9-a5a5-54253eb0584c
+let
+	y = Bool.(rand([0, 1], n, n, n))
+	ŷ = Bool.(rand([0, 1], n, n, n))
+
+	y_dtm = rand(n, n, n)
+	ŷ_dtm = rand(n, n, n)
+	hausdorff_tullio(ŷ, y, ŷ_dtm, y_dtm)
+end
 
 # ╔═╡ d2add41c-3cd7-4f1f-8ddd-b87d870dea00
 let
@@ -82,6 +127,16 @@ let
 	y_dtm = rand(n)
 	ŷ_dtm = rand(n)
 	@test hausdorff(ŷ, y, ŷ_dtm, y_dtm) != 0
+end
+
+# ╔═╡ ccb9a7ea-dd0e-4af5-be20-dd9eaf9a5105
+let
+	y = rand(n)
+	ŷ = rand(n)
+
+	y_dtm = rand(n)
+	ŷ_dtm = rand(n)
+	@test hausdorff(ŷ, y, ŷ_dtm, y_dtm) ≈ hausdorff_tullio(ŷ, y, ŷ_dtm, y_dtm)
 end
 
 # ╔═╡ 9dd2b329-e2e2-4c2b-85cf-3f4239dbe659
@@ -109,6 +164,16 @@ let
 	@test hausdorff(ŷ, y, ŷ_dtm, y_dtm) != 0
 end
 
+# ╔═╡ c26566ac-f69e-4a31-8281-395e050d4e72
+let
+	y = rand(n, n)
+	ŷ = rand(n, n)
+
+	y_dtm = rand(n, n)
+	ŷ_dtm = rand(n, n)
+	@test hausdorff(ŷ, y, ŷ_dtm, y_dtm) ≈ hausdorff_tullio(ŷ, y, ŷ_dtm, y_dtm)
+end
+
 # ╔═╡ e6d10d26-31ca-45d7-82c5-3f959b96561e
 md"""
 ## 3D
@@ -134,6 +199,26 @@ let
 	@test hausdorff(ŷ, y, ŷ_dtm, y_dtm) != 0
 end
 
+# ╔═╡ 3ba5cc63-d8d6-4586-8e65-e5ec15d88c59
+let
+	y = rand(n, n, n)
+	ŷ = rand(n, n, n)
+
+	y_dtm = rand(n, n, n)
+	ŷ_dtm = rand(n, n, n)
+	@test hausdorff(ŷ, y, ŷ_dtm, y_dtm) ≈ hausdorff_tullio(ŷ, y, ŷ_dtm, y_dtm)
+end
+
+# ╔═╡ 46349d0d-1e93-44b6-a58e-2d2f0f7f0c06
+let
+	y = Bool.(rand([0, 1], n, n, n))
+	ŷ = Bool.(rand([0, 1], n, n, n))
+
+	y_dtm = rand(n, n, n)
+	ŷ_dtm = rand(n, n, n)
+	@test hausdorff(ŷ, y, ŷ_dtm, y_dtm) ≈ hausdorff_tullio(ŷ, y, ŷ_dtm, y_dtm)
+end
+
 # ╔═╡ Cell order:
 # ╠═9eacf83e-2da5-4e45-9c3f-5d1e243c925e
 # ╠═6a0f40ae-375d-4bf5-99ce-9a8872090ad3
@@ -141,15 +226,25 @@ end
 # ╟─fa4bda11-6edb-4239-8ce2-825dc57168b3
 # ╠═525f77e0-5afa-11ed-0023-c584662f3e75
 # ╟─3d923edb-682c-4827-95f1-5f8a55a810e1
+# ╟─7d69d599-a6cb-4034-beb9-894408534b92
+# ╠═c16e2ec5-6919-497b-bcc4-153fdb7470a1
+# ╟─75e2e541-6f2e-4749-b0d3-f7096f1338e8
 # ╠═d09dac60-9593-4596-ab2e-2bbea1e15cf2
+# ╟─153f3c85-b8a3-4699-8b96-91ee166b1e9c
+# ╠═a864253e-5a3a-4fdc-89e8-bfcacaaf1a8b
+# ╠═65a2ad53-0f4f-41e9-a5a5-54253eb0584c
 # ╟─739ee739-f528-4e6f-a935-8c8306c8c8db
 # ╟─3c78a53d-a54a-4fe1-904e-426435f4b5f1
 # ╠═29e10037-b40e-4838-bc0d-c7d04715b2d2
 # ╠═d2add41c-3cd7-4f1f-8ddd-b87d870dea00
 # ╠═34f1a4a0-845a-44d7-ae12-75b9470748c8
+# ╠═ccb9a7ea-dd0e-4af5-be20-dd9eaf9a5105
 # ╟─9dd2b329-e2e2-4c2b-85cf-3f4239dbe659
 # ╠═82d98c5e-fcb8-47b3-a229-549430e2f583
 # ╠═50ff5136-4f85-48e5-b2e6-364ad8f8a2fc
+# ╠═c26566ac-f69e-4a31-8281-395e050d4e72
 # ╟─e6d10d26-31ca-45d7-82c5-3f959b96561e
 # ╠═f37d54ab-89c5-4f86-bffd-0076372c0261
 # ╠═1687bf6a-ed40-49b5-a1cc-625907db2ce5
+# ╠═3ba5cc63-d8d6-4586-8e65-e5ec15d88c59
+# ╠═46349d0d-1e93-44b6-a58e-2d2f0f7f0c06
