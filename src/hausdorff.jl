@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.13
+# v0.19.12
 
 using Markdown
 using InteractiveUtils
@@ -9,7 +9,9 @@ using InteractiveUtils
 begin
 	using Pkg
 	Pkg.activate("..")
-	using Revise, PlutoUI, Losers, PlutoTest, Statistics, Tullio
+	Pkg.add("CUDA")
+	using Revise, PlutoUI, Losers, PlutoTest, Statistics, Tullio, CUDA
+	using CUDA:i32
 end
 
 # ╔═╡ 6a0f40ae-375d-4bf5-99ce-9a8872090ad3
@@ -84,6 +86,67 @@ md"""
 function hausdorff_tullio(ŷ::AbstractArray, y::AbstractArray, ŷ_dtm::AbstractArray, y_dtm::AbstractArray)
     @tullio tot := (ŷ[i, j, k] .- y[i, j, k])^2 * (ŷ_dtm[i, j, k]^2 + y_dtm[i, j, k]^2)
     return loss = tot / length(y)
+end
+
+# ╔═╡ e54e6ce7-2ff3-4505-937e-f62504f76613
+md"""
+## GPU - CuArray compatible
+"""
+
+# ╔═╡ d7261cc2-3b6b-4b0c-b223-faaac574caf2
+function _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l, T)
+    index = threadIdx().x
+    thread_stride = blockDim().x
+	i = index + (blockIdx().x - 1) * thread_stride
+
+    if i > l
+        return
+    end
+    
+    cache = CuDynamicSharedArray(T, (thread_stride,))
+
+    @inbounds temp1 = ŷ[i] - y[i]
+    @inbounds temp2 = ŷ_dtm[i]
+    @inbounds temp3 = y_dtm[i]
+    @inbounds cache[index] +=  temp1*temp1 * (temp2*temp2 + temp3*temp3)
+
+    sync_threads()
+    
+    prev_mid = thread_stride
+    while true
+        mid = (prev_mid - 1i32) ÷ 2i32 + 1i32
+        if index+mid <= prev_mid
+            @inbounds cache[index] += cache[index+mid]
+        end
+        sync_threads()
+        prev_mid = mid
+        mid == 1i32 && break
+    end
+    
+    if index == 1i32
+        @inbounds CUDA.@atomic f[] += cache[1]
+    end
+    return nothing
+end
+
+# ╔═╡ 3dd96b72-c07f-487c-98b8-23bdcd58f7c7
+"""
+	hausdorff(ŷ::CuArray{T1}, y::CuArray{T1}, ŷ_dtm::CuArray{T2}, y_dtm::CuArray{T2})where {T1, T2}
+
+Loss function based on the Hausdorff metric. Measures the distance between the boundaries of predicted array `ŷ` and ground truth array `y`. Both the predicted and ground truth arrays require a distance transform `ŷ_dtm` and `y_dtm` as inputs for this boundary operation to work. GPU version of 'hausdorff'.
+
+[Citation](https://doi.org/10.48550/arXiv.1904.10030)
+"""
+function hausdorff(ŷ::CuArray{T1}, y::CuArray{T1}, ŷ_dtm::CuArray{T2}, y_dtm::CuArray{T2})where {T1, T2}
+	T = promote_type(T1, T2)
+    f = CUDA.zeros(T,1)
+    l = length(ŷ)
+
+    threads = min(l, GPU_threads)
+    blocks = cld(l, threads)
+
+    @cuda threads=threads blocks=blocks shmem=threads*sizeof(T) _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l, T)
+    @inbounds CUDA.@allowscalar return f[]/l
 end
 
 # ╔═╡ 739ee739-f528-4e6f-a935-8c8306c8c8db
@@ -233,6 +296,9 @@ end
 # ╟─153f3c85-b8a3-4699-8b96-91ee166b1e9c
 # ╠═a864253e-5a3a-4fdc-89e8-bfcacaaf1a8b
 # ╠═65a2ad53-0f4f-41e9-a5a5-54253eb0584c
+# ╟─e54e6ce7-2ff3-4505-937e-f62504f76613
+# ╠═d7261cc2-3b6b-4b0c-b223-faaac574caf2
+# ╠═3dd96b72-c07f-487c-98b8-23bdcd58f7c7
 # ╟─739ee739-f528-4e6f-a935-8c8306c8c8db
 # ╟─3c78a53d-a54a-4fe1-904e-426435f4b5f1
 # ╠═29e10037-b40e-4838-bc0d-c7d04715b2d2
