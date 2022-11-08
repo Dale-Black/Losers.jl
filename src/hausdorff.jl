@@ -93,24 +93,23 @@ md"""
 """
 
 # ╔═╡ d7261cc2-3b6b-4b0c-b223-faaac574caf2
-function _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l, T)
+function _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l, thread_stride, b_max)
     index = threadIdx().x
-    thread_stride = blockDim().x
-	i = index + (blockIdx().x - 1) * thread_stride
-
+	i = index + (blockIdx().x - 1i32) * thread_stride
     if i > l
         return
     end
-    
-    cache = CuDynamicSharedArray(T, (thread_stride,))
+
+	b_l = blockIdx().x == b_max ? l - (blockIdx().x - 1i32) * thread_stride : thread_stride
+    cache = CuDynamicSharedArray(Float64, (thread_stride,))
 
     @inbounds temp1 = ŷ[i] - y[i]
     @inbounds temp2 = ŷ_dtm[i]
     @inbounds temp3 = y_dtm[i]
-    @inbounds cache[index] =  temp1*temp1 * (temp2*temp2 + temp3*temp3)
-    sync_threads()
+    @inbounds cache[index] = muladd(temp2, temp2, temp3*temp3) * temp1 * temp1
     
-    prev_mid = thread_stride
+	sync_threads()
+    prev_mid = b_l
     while true
         mid = (prev_mid - 1i32) ÷ 2i32 + 1i32
         if index+mid <= prev_mid
@@ -122,14 +121,14 @@ function _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l, T)
     end
     
     if index == 1i32
-        @inbounds CUDA.@atomic f[] += cache[1]
+        @inbounds CUDA.@atomic f[1] += cache[1]
     end
     return nothing
 end
 
 # ╔═╡ a577ff0e-52a0-4518-a48b-164392266821
 begin
-	k = @cuda launch=false _hausdorff_kernel(CuArray([0]), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), 0, typeof(1))
+	k = @cuda launch=false _hausdorff_kernel(CuArray([0]), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), 0,0,0)
     GPU_threads = launch_configuration(k.fun).threads
 end
 
@@ -142,15 +141,14 @@ Loss function based on the Hausdorff metric. Measures the distance between the b
 [Citation](https://doi.org/10.48550/arXiv.1904.10030)
 """
 function hausdorff(ŷ::CuArray, y::CuArray, ŷ_dtm::CuArray, y_dtm::CuArray)
-	T = promote_type(eltype(ŷ), eltype(ŷ_dtm))
-    f = CUDA.zeros(T,1)
+    f = CuArray([0.0])
     l = length(ŷ)
 
     threads = min(l, GPU_threads)
     blocks = cld(l, threads)
 
-    @cuda threads=threads blocks=blocks shmem=threads*sizeof(T) _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l, T)
-    @inbounds CUDA.@allowscalar return f[]/l
+    @cuda threads=threads blocks=blocks shmem=threads*8 _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l,threads, blocks)
+    @inbounds CUDA.@allowscalar return f[1]/l
 end
 
 # ╔═╡ 739ee739-f528-4e6f-a935-8c8306c8c8db
@@ -297,7 +295,7 @@ let
 	
 		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
 		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-3)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 			ct+=1
 		end
 	end
@@ -320,8 +318,11 @@ let
 	
 		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
 		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-3)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 			ct+=1
+		else
+			println("cpu: $rslt_cpu")
+			println("gpu: $rslt_gpu\n ")
 		end
 	end
 	@test ct == 100
@@ -343,8 +344,89 @@ let
 	
 		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
 		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-3)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 			ct+=1
+		else
+			println("cpu: $rslt_cpu")
+			println("gpu: $rslt_gpu\n ")
+		end
+	end
+	@test ct == 100
+end
+
+# ╔═╡ 9439da4e-aabd-4971-8d00-94c411aef2f1
+let
+	ct = 0
+	for i = 1:100
+		y = Bool.(rand([0, 1], n))
+		ŷ = Bool.(rand([0, 1], n))
+		y_dtm = Bool.(rand([0, 1], n))
+		ŷ_dtm = Bool.(rand([0, 1], n))
+		
+		y_GPU = CuArray(y)
+		ŷ_GPU  = CuArray(ŷ)
+		y_dtm_GPU  = CuArray(y_dtm)
+		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+	
+		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+			ct+=1
+		else
+			println("cpu: $rslt_cpu")
+			println("gpu: $rslt_gpu\n ")
+		end
+	end
+	@test ct == 100
+end
+
+# ╔═╡ 7ce8d1f1-3be4-450d-9268-610fa7b0c02b
+let
+	ct = 0
+	for i = 1:100
+		y = Bool.(rand([0, 1], n, n))
+		ŷ = Bool.(rand([0, 1], n, n))
+		y_dtm = Bool.(rand([0, 1], n, n))
+		ŷ_dtm = Bool.(rand([0, 1], n, n))
+		
+		y_GPU = CuArray(y)
+		ŷ_GPU  = CuArray(ŷ)
+		y_dtm_GPU  = CuArray(y_dtm)
+		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+	
+		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+			ct+=1
+		else
+			println("cpu: $rslt_cpu")
+			println("gpu: $rslt_gpu\n ")
+		end
+	end
+	@test ct == 100
+end
+
+# ╔═╡ e9473d2a-46e1-43fc-94a6-99c6b71252d4
+let
+	ct = 0
+	for i = 1:100
+		y = Bool.(rand([0, 1], n, n, n))
+		ŷ = Bool.(rand([0, 1], n, n, n))
+		y_dtm = Bool.(rand([0, 1], n, n, n))
+		ŷ_dtm = Bool.(rand([0, 1], n, n, n))
+		
+		y_GPU = CuArray(y)
+		ŷ_GPU  = CuArray(ŷ)
+		y_dtm_GPU  = CuArray(y_dtm)
+		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+	
+		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+			ct+=1
+		else
+			println("cpu: $rslt_cpu")
+			println("gpu: $rslt_gpu\n ")
 		end
 	end
 	@test ct == 100
@@ -364,7 +446,7 @@ end
 # ╟─153f3c85-b8a3-4699-8b96-91ee166b1e9c
 # ╠═a864253e-5a3a-4fdc-89e8-bfcacaaf1a8b
 # ╟─e54e6ce7-2ff3-4505-937e-f62504f76613
-# ╟─d7261cc2-3b6b-4b0c-b223-faaac574caf2
+# ╠═d7261cc2-3b6b-4b0c-b223-faaac574caf2
 # ╟─a577ff0e-52a0-4518-a48b-164392266821
 # ╠═3dd96b72-c07f-487c-98b8-23bdcd58f7c7
 # ╟─739ee739-f528-4e6f-a935-8c8306c8c8db
@@ -386,3 +468,6 @@ end
 # ╠═dab5a3d4-5e5d-4d57-8630-bfe59d6ce5cc
 # ╠═2cfd9b05-eb7e-4fd1-b09e-6349b45dc633
 # ╠═ce51a142-c6ff-41d6-b17c-63b30e1dadf2
+# ╠═9439da4e-aabd-4971-8d00-94c411aef2f1
+# ╠═7ce8d1f1-3be4-450d-9268-610fa7b0c02b
+# ╠═e9473d2a-46e1-43fc-94a6-99c6b71252d4

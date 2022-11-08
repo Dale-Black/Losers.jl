@@ -44,20 +44,21 @@ md"""
 """
 
 # ╔═╡ f3eae42a-8686-4213-83c9-65ce48240d4d
-function _dice_kernel(f, x, y, l, T, thread_stride, j)
+function _dice_kernel(f, x, y, l, thread_stride, j, b_max)
     index = threadIdx().x
 	i = index + (blockIdx().x - 1i32) * thread_stride
 
     if i > l
 		return
     end
-    
-    cache = CuDynamicSharedArray(T, (thread_stride,))
+	
+    b_l = blockIdx().x == b_max ? l - (blockIdx().x - 1i32) * thread_stride : thread_stride
+    cache = CuDynamicSharedArray(Float64, (thread_stride,))
 
 	@inbounds cache[index] = x[i] * y[i]
 		
     sync_threads()
-    prev_mid = thread_stride
+    prev_mid = b_l
     while true
         mid = (prev_mid - 1i32) ÷ 2i32 + 1i32
         if index+mid <= prev_mid
@@ -83,19 +84,18 @@ Simple dice loss function. Penalizes based on the overlap between predicted `ŷ`
 [Citation](https://doi.org/10.48550/arXiv.1707.03237)
 """
 function dice(ŷ::CuArray, y::CuArray, ϵ=1e-5)
-	T = eltype(y)
-	f = CUDA.zeros(T,2)
+	f = CuArray([0.0, 0.0])
 	l = length(ŷ)
 	
-	k = @cuda launch=false _dice_kernel(f, ŷ, y, l, T, 0, 0)
+	k = @cuda launch=false _dice_kernel(f, ŷ, y, l, 0, 0, 0)
     GPU_threads = launch_configuration(k.fun).threads
 	t = min(l, GPU_threads)
     b= cld(l, t)
 	
-    k(f, ŷ, y, l, T, t, 1; threads=t, blocks=b, shmem=t*sizeof(T))
-	k(f, ŷ, ŷ, l, T, t, 2; threads=t, blocks=b, shmem=t*sizeof(T))
-	k(f, y, y, l, T, t, 2; threads=t, blocks=b, shmem=t*sizeof(T))
-    
+    k(f, ŷ, y, l, t, 1, b; threads=t, blocks=b, shmem=t*8)
+	k(f, ŷ, ŷ, l, t, 2, b; threads=t, blocks=b, shmem=t*8)
+	k(f, y, y, l, t, 2, b; threads=t, blocks=b, shmem=t*8)
+
     f = Array(f)
     @inbounds return 1 - muladd(2, f[1], ϵ) / (f[2] + ϵ)
 end
@@ -136,7 +136,7 @@ n = rand(10:100)
 let
 	y = rand(n)
 	ŷ = y
-	dice(ŷ, y) == 0
+	@test dice(ŷ, y) == 0
 end
 
 # ╔═╡ 561f3633-524e-465f-a3f7-25a290b693f5
@@ -201,7 +201,7 @@ let
 	
 		rslt_cpu = dice(ŷ, y)
 		rslt_gpu = dice(ŷ_GPU, y_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-3)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 			ct+=1
 		end
 	end
@@ -220,7 +220,7 @@ let
 	
 		rslt_cpu = dice(ŷ, y)
 		rslt_gpu = dice(ŷ_GPU, y_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-3)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 			ct+=1
 		end
 	end
@@ -239,7 +239,67 @@ let
 	
 		rslt_cpu = dice(ŷ, y)
 		rslt_gpu = dice(ŷ_GPU, y_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-3)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+			ct+=1
+		else
+			println("cpu: $rslt_cpu")
+			println("gpu: $rslt_gpu")
+		end
+	end
+	@test ct == 100
+end
+
+# ╔═╡ d175c618-0781-42d3-956c-931f6bd8a246
+let
+	ct = 0
+	for i = 1:100
+		y = Bool.(rand([0, 1], n))
+		ŷ = Bool.(rand([0, 1], n))
+		
+		y_GPU = CuArray(y)
+		ŷ_GPU = CuArray(ŷ)
+		
+		rslt_cpu = dice(ŷ, y)
+		rslt_gpu = dice(ŷ_GPU, y_GPU)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+			ct+=1
+		end
+	end
+	@test ct == 100
+end
+
+# ╔═╡ c5dedcf1-5434-4094-b890-ae3b1da423f1
+let
+	ct = 0
+	for i = 1:100
+		y = Bool.(rand([0, 1], n, n))
+		ŷ = Bool.(rand([0, 1], n, n))
+		
+		y_GPU = CuArray(y)
+		ŷ_GPU = CuArray(ŷ)
+		
+		rslt_cpu = dice(ŷ, y)
+		rslt_gpu = dice(ŷ_GPU, y_GPU)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+			ct+=1
+		end
+	end
+	@test ct == 100
+end
+
+# ╔═╡ 2a2b3b27-680a-45b4-9472-0abcbd4ae3e7
+let
+	ct = 0
+	for i = 1:100
+		y = Bool.(rand([0, 1], n, n, n))
+		ŷ = Bool.(rand([0, 1], n, n, n))
+		
+		y_GPU = CuArray(y)
+		ŷ_GPU = CuArray(ŷ)
+		
+		rslt_cpu = dice(ŷ, y)
+		rslt_gpu = dice(ŷ_GPU, y_GPU)
+		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 			ct+=1
 		end
 	end
@@ -256,7 +316,7 @@ end
 # ╠═f3eae42a-8686-4213-83c9-65ce48240d4d
 # ╠═6933edad-970b-4e09-b275-a925c8e695a2
 # ╟─fe277f06-6ac2-4654-b245-c12aa6d438ea
-# ╠═e60745ee-7748-4036-be48-57da006eeccf
+# ╟─e60745ee-7748-4036-be48-57da006eeccf
 # ╟─1a759c85-d553-4d95-8277-095398059c10
 # ╟─b516cc05-b185-411f-b3ea-a44ec102bf93
 # ╠═1173c99a-e684-4ced-8757-dfcf06c92ef2
@@ -272,3 +332,6 @@ end
 # ╠═1c61d537-f8fe-4f67-831e-051939056255
 # ╠═68d82e76-5175-4e8a-aeea-1bf83c1dddfa
 # ╠═7a22ca61-04fb-4a58-8e9b-a4b76857be06
+# ╠═d175c618-0781-42d3-956c-931f6bd8a246
+# ╠═c5dedcf1-5434-4094-b890-ae3b1da423f1
+# ╠═2a2b3b27-680a-45b4-9472-0abcbd4ae3e7
