@@ -131,12 +131,12 @@ function _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l, thread_stride, b_max)
 end
 
 # ╔═╡ a577ff0e-52a0-4518-a48b-164392266821
-begin
-	if has_cuda_gpu()
-		k = @cuda launch=false _hausdorff_kernel(CuArray([0]), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), 0,0,0)
-		GPU_threads = launch_configuration(k.fun).threads
-	end
-end
+# begin
+# 	if has_cuda_gpu()
+# 		k = @cuda launch=false 
+# 		GPU_threads = launch_configuration(k.fun).threads
+# 	end
+# end
 
 # ╔═╡ 3dd96b72-c07f-487c-98b8-23bdcd58f7c7
 """
@@ -150,10 +150,13 @@ function hausdorff(ŷ::CuArray, y::CuArray, ŷ_dtm::CuArray, y_dtm::CuArray)
     f = CuArray([0.0])
     l = length(ŷ)
 
-    threads = min(l, GPU_threads)
-    blocks = cld(l, threads)
+	k = @cuda launch=false _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l, 0, 0)
+    GPU_threads = launch_configuration(k.fun).threads
 
-    @cuda threads=threads blocks=blocks shmem=threads*8 _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l,threads, blocks)
+    t = min(l, GPU_threads)
+    b = cld(l, threads)
+
+    k(f, ŷ, y, ŷ_dtm, y_dtm, l, t, b; threads=t, blocks=b, shmem=t*8)
     @inbounds CUDA.@allowscalar return f[1]/l
 end
 
