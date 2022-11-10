@@ -125,7 +125,7 @@ function _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l, thread_stride, b_max)
     end
     
     if index == 1i32
-        @inbounds CUDA.@atomic f[1] += cache[1]
+        @inbounds CUDA.@atomic f[] += cache[1]
     end
     return nothing
 end
@@ -157,7 +157,7 @@ function hausdorff(ŷ::CuArray, y::CuArray, ŷ_dtm::CuArray, y_dtm::CuArray)
     b = cld(l, t)
 
     k(f, ŷ, y, ŷ_dtm, y_dtm, l, t, b; threads=t, blocks=b, shmem=t*8)
-    @inbounds CUDA.@allowscalar return f[1]/l
+    @inbounds CUDA.@allowscalar return f[]/l
 end
 
 # ╔═╡ 739ee739-f528-4e6f-a935-8c8306c8c8db
