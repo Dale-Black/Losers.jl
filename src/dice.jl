@@ -191,8 +191,7 @@ md"""
 
 # ╔═╡ 1c61d537-f8fe-4f67-831e-051939056255
 let
-	ct = 0
-	for i = 1:100
+	if has_cuda_gpu()
 		y = rand(n)
 		ŷ = rand(n)
 		
@@ -201,17 +200,13 @@ let
 	
 		rslt_cpu = dice(ŷ, y)
 		rslt_gpu = dice(ŷ_GPU, y_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		end
+		@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 	end
-	@test ct == 100
 end
 
 # ╔═╡ 68d82e76-5175-4e8a-aeea-1bf83c1dddfa
 let
-	ct = 0
-	for i = 1:100
+	if has_cuda_gpu()
 		y = rand(n, n)
 		ŷ = rand(n, n)
 		
@@ -220,17 +215,13 @@ let
 	
 		rslt_cpu = dice(ŷ, y)
 		rslt_gpu = dice(ŷ_GPU, y_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		end
+		@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 	end
-	@test ct == 100
 end
 
 # ╔═╡ 7a22ca61-04fb-4a58-8e9b-a4b76857be06
 let
-	ct = 0
-	for i = 1:100
+	if has_cuda_gpu()
 		y = rand(n, n, n)
 		ŷ = rand(n, n, n)
 		
@@ -239,20 +230,13 @@ let
 	
 		rslt_cpu = dice(ŷ, y)
 		rslt_gpu = dice(ŷ_GPU, y_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		else
-			println("cpu: $rslt_cpu")
-			println("gpu: $rslt_gpu")
-		end
+		@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 	end
-	@test ct == 100
 end
 
 # ╔═╡ d175c618-0781-42d3-956c-931f6bd8a246
 let
-	ct = 0
-	for i = 1:100
+	if has_cuda_gpu()
 		y = Bool.(rand([0, 1], n))
 		ŷ = Bool.(rand([0, 1], n))
 		
@@ -261,17 +245,13 @@ let
 		
 		rslt_cpu = dice(ŷ, y)
 		rslt_gpu = dice(ŷ_GPU, y_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		end
+		@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 	end
-	@test ct == 100
 end
 
 # ╔═╡ c5dedcf1-5434-4094-b890-ae3b1da423f1
 let
-	ct = 0
-	for i = 1:100
+	if has_cuda_gpu()
 		y = Bool.(rand([0, 1], n, n))
 		ŷ = Bool.(rand([0, 1], n, n))
 		
@@ -280,17 +260,13 @@ let
 		
 		rslt_cpu = dice(ŷ, y)
 		rslt_gpu = dice(ŷ_GPU, y_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		end
+		@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 	end
-	@test ct == 100
 end
 
 # ╔═╡ 2a2b3b27-680a-45b4-9472-0abcbd4ae3e7
 let
-	ct = 0
-	for i = 1:100
+	if has_cuda_gpu()
 		y = Bool.(rand([0, 1], n, n, n))
 		ŷ = Bool.(rand([0, 1], n, n, n))
 		
@@ -299,11 +275,8 @@ let
 		
 		rslt_cpu = dice(ŷ, y)
 		rslt_gpu = dice(ŷ_GPU, y_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		end
+		@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 	end
-	@test ct == 100
 end
 
 # ╔═╡ Cell order:
