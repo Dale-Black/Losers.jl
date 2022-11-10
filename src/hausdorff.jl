@@ -132,8 +132,10 @@ end
 
 # ╔═╡ a577ff0e-52a0-4518-a48b-164392266821
 begin
-	k = @cuda launch=false _hausdorff_kernel(CuArray([0]), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), 0,0,0)
-    GPU_threads = launch_configuration(k.fun).threads
+	if has_cuda_gpu()
+		k = @cuda launch=false _hausdorff_kernel(CuArray([0]), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), CuArray{Float32, 1}(undef, 0), 0,0,0)
+		GPU_threads = launch_configuration(k.fun).threads
+	end
 end
 
 # ╔═╡ 3dd96b72-c07f-487c-98b8-23bdcd58f7c7
