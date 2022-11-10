@@ -9,9 +9,13 @@ using InteractiveUtils
 begin
 	using Pkg
 	Pkg.activate("..")
+	Pkg.instantiate()
 	using Revise, PlutoUI, Losers, PlutoTest, Statistics, Tullio, CUDA
 	using CUDA:i32
 end
+
+# ╔═╡ dbbf5f4e-b262-4ee0-9dbe-d97fb21cd99d
+
 
 # ╔═╡ 6a0f40ae-375d-4bf5-99ce-9a8872090ad3
 TableOfContents()
@@ -281,155 +285,104 @@ md"""
 
 # ╔═╡ dab5a3d4-5e5d-4d57-8630-bfe59d6ce5cc
 let
-	ct = 0
-	for i = 1:100
-		y = rand(n)
-		ŷ = rand(n)
-		y_dtm = rand(n)
-		ŷ_dtm = rand(n)
-		
-		y_GPU = CuArray(y)
-		ŷ_GPU  = CuArray(ŷ)
-		y_dtm_GPU  = CuArray(y_dtm)
-		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+	y = rand(n)
+	ŷ = rand(n)
+	y_dtm = rand(n)
+	ŷ_dtm = rand(n)
 	
-		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
-		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		end
-	end
-	@test ct == 100
+	y_GPU = CuArray(y)
+	ŷ_GPU  = CuArray(ŷ)
+	y_dtm_GPU  = CuArray(y_dtm)
+	ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+	rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+	rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+	@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 end
 
 # ╔═╡ 2cfd9b05-eb7e-4fd1-b09e-6349b45dc633
 let
-	ct = 0
-	for i = 1:100
-		y = rand(n, n)
-		ŷ = rand(n, n)
-		y_dtm = rand(n, n)
-		ŷ_dtm = rand(n, n)
-		
-		y_GPU = CuArray(y)
-		ŷ_GPU  = CuArray(ŷ)
-		y_dtm_GPU  = CuArray(y_dtm)
-		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+	y = rand(n, n)
+	ŷ = rand(n, n)
+	y_dtm = rand(n, n)
+	ŷ_dtm = rand(n, n)
 	
-		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
-		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		else
-			println("cpu: $rslt_cpu")
-			println("gpu: $rslt_gpu\n ")
-		end
-	end
-	@test ct == 100
+	y_GPU = CuArray(y)
+	ŷ_GPU  = CuArray(ŷ)
+	y_dtm_GPU  = CuArray(y_dtm)
+	ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+	rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+	rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+	@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 end
 
 # ╔═╡ ce51a142-c6ff-41d6-b17c-63b30e1dadf2
 let
-	ct = 0
-	for i = 1:100
-		y = rand(n, n, n)
-		ŷ = rand(n, n, n)
-		y_dtm = rand(n, n, n)
-		ŷ_dtm = rand(n, n, n)
-		
-		y_GPU = CuArray(y)
-		ŷ_GPU  = CuArray(ŷ)
-		y_dtm_GPU  = CuArray(y_dtm)
-		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+	y = rand(n, n, n)
+	ŷ = rand(n, n, n)
+	y_dtm = rand(n, n, n)
+	ŷ_dtm = rand(n, n, n)
 	
-		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
-		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		else
-			println("cpu: $rslt_cpu")
-			println("gpu: $rslt_gpu\n ")
-		end
-	end
-	@test ct == 100
+	y_GPU = CuArray(y)
+	ŷ_GPU  = CuArray(ŷ)
+	y_dtm_GPU  = CuArray(y_dtm)
+	ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+	rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+	rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+	@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 end
 
 # ╔═╡ 9439da4e-aabd-4971-8d00-94c411aef2f1
 let
-	ct = 0
-	for i = 1:100
-		y = Bool.(rand([0, 1], n))
-		ŷ = Bool.(rand([0, 1], n))
-		y_dtm = Bool.(rand([0, 1], n))
-		ŷ_dtm = Bool.(rand([0, 1], n))
-		
-		y_GPU = CuArray(y)
-		ŷ_GPU  = CuArray(ŷ)
-		y_dtm_GPU  = CuArray(y_dtm)
-		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+	y = Bool.(rand([0, 1], n))
+	ŷ = Bool.(rand([0, 1], n))
+	y_dtm = Bool.(rand([0, 1], n))
+	ŷ_dtm = Bool.(rand([0, 1], n))
 	
-		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
-		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		else
-			println("cpu: $rslt_cpu")
-			println("gpu: $rslt_gpu\n ")
-		end
-	end
-	@test ct == 100
+	y_GPU = CuArray(y)
+	ŷ_GPU  = CuArray(ŷ)
+	y_dtm_GPU  = CuArray(y_dtm)
+	ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+	rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+	rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+	@test	isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 end
 
 # ╔═╡ 7ce8d1f1-3be4-450d-9268-610fa7b0c02b
 let
-	ct = 0
-	for i = 1:100
-		y = Bool.(rand([0, 1], n, n))
-		ŷ = Bool.(rand([0, 1], n, n))
-		y_dtm = Bool.(rand([0, 1], n, n))
-		ŷ_dtm = Bool.(rand([0, 1], n, n))
-		
-		y_GPU = CuArray(y)
-		ŷ_GPU  = CuArray(ŷ)
-		y_dtm_GPU  = CuArray(y_dtm)
-		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+	y = Bool.(rand([0, 1], n, n))
+	ŷ = Bool.(rand([0, 1], n, n))
+	y_dtm = Bool.(rand([0, 1], n, n))
+	ŷ_dtm = Bool.(rand([0, 1], n, n))
 	
-		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
-		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		else
-			println("cpu: $rslt_cpu")
-			println("gpu: $rslt_gpu\n ")
-		end
-	end
-	@test ct == 100
+	y_GPU = CuArray(y)
+	ŷ_GPU  = CuArray(ŷ)
+	y_dtm_GPU  = CuArray(y_dtm)
+	ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+	rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+	rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+	@test	isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 end
 
 # ╔═╡ e9473d2a-46e1-43fc-94a6-99c6b71252d4
 let
-	ct = 0
-	for i = 1:100
-		y = Bool.(rand([0, 1], n, n, n))
-		ŷ = Bool.(rand([0, 1], n, n, n))
-		y_dtm = Bool.(rand([0, 1], n, n, n))
-		ŷ_dtm = Bool.(rand([0, 1], n, n, n))
-		
-		y_GPU = CuArray(y)
-		ŷ_GPU  = CuArray(ŷ)
-		y_dtm_GPU  = CuArray(y_dtm)
-		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+	y = Bool.(rand([0, 1], n, n, n))
+	ŷ = Bool.(rand([0, 1], n, n, n))
+	y_dtm = Bool.(rand([0, 1], n, n, n))
+	ŷ_dtm = Bool.(rand([0, 1], n, n, n))
 	
-		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
-		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
-		if isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
-			ct+=1
-		else
-			println("cpu: $rslt_cpu")
-			println("gpu: $rslt_gpu\n ")
-		end
-	end
-	@test ct == 100
+	y_GPU = CuArray(y)
+	ŷ_GPU  = CuArray(ŷ)
+	y_dtm_GPU  = CuArray(y_dtm)
+	ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+	rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+	rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+	@test	isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
 end
 
 # ╔═╡ Cell order:
