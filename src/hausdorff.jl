@@ -154,7 +154,7 @@ function hausdorff(ŷ::CuArray, y::CuArray, ŷ_dtm::CuArray, y_dtm::CuArray)
     GPU_threads = launch_configuration(k.fun).threads
 
     t = min(l, GPU_threads)
-    b = cld(l, threads)
+    b = cld(l, t)
 
     k(f, ŷ, y, ŷ_dtm, y_dtm, l, t, b; threads=t, blocks=b, shmem=t*8)
     @inbounds CUDA.@allowscalar return f[1]/l
