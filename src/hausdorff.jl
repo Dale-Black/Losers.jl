@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.13
+# v0.19.14
 
 using Markdown
 using InteractiveUtils
@@ -9,8 +9,13 @@ using InteractiveUtils
 begin
 	using Pkg
 	Pkg.activate("..")
-	using Revise, PlutoUI, Losers, PlutoTest, Statistics, Tullio
+	Pkg.instantiate()
+	using Revise, PlutoUI, Losers, PlutoTest, Statistics, Tullio, CUDA
+	using CUDA:i32
 end
+
+# ╔═╡ dbbf5f4e-b262-4ee0-9dbe-d97fb21cd99d
+
 
 # ╔═╡ 6a0f40ae-375d-4bf5-99ce-9a8872090ad3
 TableOfContents()
@@ -86,6 +91,75 @@ function hausdorff_tullio(ŷ::AbstractArray, y::AbstractArray, ŷ_dtm::AbstractA
     return loss = tot / length(y)
 end
 
+# ╔═╡ e54e6ce7-2ff3-4505-937e-f62504f76613
+md"""
+## GPU - CuArray compatible
+"""
+
+# ╔═╡ d7261cc2-3b6b-4b0c-b223-faaac574caf2
+function _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l, thread_stride, b_max)
+    index = threadIdx().x
+	i = index + (blockIdx().x - 1i32) * thread_stride
+    if i > l
+        return
+    end
+
+	b_l = blockIdx().x == b_max ? l - (blockIdx().x - 1i32) * thread_stride : thread_stride
+    cache = CuDynamicSharedArray(Float64, (thread_stride,))
+
+    @inbounds temp1 = ŷ[i] - y[i]
+    @inbounds temp2 = ŷ_dtm[i]
+    @inbounds temp3 = y_dtm[i]
+    @inbounds cache[index] = muladd(temp2, temp2, temp3*temp3) * temp1 * temp1
+    
+	sync_threads()
+    prev_mid = b_l
+    while true
+        mid = (prev_mid - 1i32) ÷ 2i32 + 1i32
+        if index+mid <= prev_mid
+            @inbounds cache[index] += cache[index+mid]
+        end
+        sync_threads()
+        prev_mid = mid
+        mid == 1i32 && break
+    end
+    
+    if index == 1i32
+        @inbounds CUDA.@atomic f[] += cache[1]
+    end
+    return nothing
+end
+
+# ╔═╡ a577ff0e-52a0-4518-a48b-164392266821
+# begin
+# 	if has_cuda_gpu()
+# 		k = @cuda launch=false 
+# 		GPU_threads = launch_configuration(k.fun).threads
+# 	end
+# end
+
+# ╔═╡ 3dd96b72-c07f-487c-98b8-23bdcd58f7c7
+"""
+	hausdorff(ŷ::CuArray, y::CuArray, ŷ_dtm::CuArray, y_dtm::CuArray)
+
+Loss function based on the Hausdorff metric. Measures the distance between the boundaries of predicted array `ŷ` and ground truth array `y`. Both the predicted and ground truth arrays require a distance transform `ŷ_dtm` and `y_dtm` as inputs for this boundary operation to work. GPU version of 'hausdorff'.
+
+[Citation](https://doi.org/10.48550/arXiv.1904.10030)
+"""
+function hausdorff(ŷ::CuArray, y::CuArray, ŷ_dtm::CuArray, y_dtm::CuArray)
+    f = CuArray([0.0])
+    l = length(ŷ)
+
+	k = @cuda launch=false _hausdorff_kernel(f, ŷ, y, ŷ_dtm, y_dtm, l, 0, 0)
+    GPU_threads = launch_configuration(k.fun).threads
+
+    t = min(l, GPU_threads)
+    b = cld(l, t)
+
+    k(f, ŷ, y, ŷ_dtm, y_dtm, l, t, b; threads=t, blocks=b, shmem=t*8)
+    @inbounds CUDA.@allowscalar return f[]/l
+end
+
 # ╔═╡ 739ee739-f528-4e6f-a935-8c8306c8c8db
 md"""
 # Tests
@@ -98,16 +172,6 @@ md"""
 
 # ╔═╡ 29e10037-b40e-4838-bc0d-c7d04715b2d2
 n = rand(10:100)
-
-# ╔═╡ 65a2ad53-0f4f-41e9-a5a5-54253eb0584c
-let
-	y = Bool.(rand([0, 1], n, n, n))
-	ŷ = Bool.(rand([0, 1], n, n, n))
-
-	y_dtm = rand(n, n, n)
-	ŷ_dtm = rand(n, n, n)
-	hausdorff_tullio(ŷ, y, ŷ_dtm, y_dtm)
-end
 
 # ╔═╡ d2add41c-3cd7-4f1f-8ddd-b87d870dea00
 let
@@ -219,6 +283,125 @@ let
 	@test hausdorff(ŷ, y, ŷ_dtm, y_dtm) ≈ hausdorff_tullio(ŷ, y, ŷ_dtm, y_dtm)
 end
 
+# ╔═╡ d9dbc443-1724-467f-8da8-c1e09ccd14f8
+md"""
+## GPU
+"""
+
+# ╔═╡ dab5a3d4-5e5d-4d57-8630-bfe59d6ce5cc
+# let
+# 	if has_cuda_gpu()
+# 		y = rand(n)
+# 		ŷ = rand(n)
+# 		y_dtm = rand(n)
+# 		ŷ_dtm = rand(n)
+		
+# 		y_GPU = CuArray(y)
+# 		ŷ_GPU  = CuArray(ŷ)
+# 		y_dtm_GPU  = CuArray(y_dtm)
+# 		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+# 		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+# 		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+# 		@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+# 	end
+# end
+
+# ╔═╡ 2cfd9b05-eb7e-4fd1-b09e-6349b45dc633
+# let
+# 	if has_cuda_gpu()
+# 		y = rand(n, n)
+# 		ŷ = rand(n, n)
+# 		y_dtm = rand(n, n)
+# 		ŷ_dtm = rand(n, n)
+		
+# 		y_GPU = CuArray(y)
+# 		ŷ_GPU  = CuArray(ŷ)
+# 		y_dtm_GPU  = CuArray(y_dtm)
+# 		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+# 		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+# 		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+# 		@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+# 	end
+# end
+
+# ╔═╡ ce51a142-c6ff-41d6-b17c-63b30e1dadf2
+# let
+# 	if has_cuda_gpu()
+# 		y = rand(n, n, n)
+# 		ŷ = rand(n, n, n)
+# 		y_dtm = rand(n, n, n)
+# 		ŷ_dtm = rand(n, n, n)
+		
+# 		y_GPU = CuArray(y)
+# 		ŷ_GPU  = CuArray(ŷ)
+# 		y_dtm_GPU  = CuArray(y_dtm)
+# 		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+# 		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+# 		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+# 		@test isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+# 	end
+# end
+
+# ╔═╡ 9439da4e-aabd-4971-8d00-94c411aef2f1
+# let
+# 	if has_cuda_gpu()
+# 		y = Bool.(rand([0, 1], n))
+# 		ŷ = Bool.(rand([0, 1], n))
+# 		y_dtm = Bool.(rand([0, 1], n))
+# 		ŷ_dtm = Bool.(rand([0, 1], n))
+		
+# 		y_GPU = CuArray(y)
+# 		ŷ_GPU  = CuArray(ŷ)
+# 		y_dtm_GPU  = CuArray(y_dtm)
+# 		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+# 		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+# 		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+# 		@test	isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+# 	end
+# end
+
+# ╔═╡ 7ce8d1f1-3be4-450d-9268-610fa7b0c02b
+# let
+# 	if has_cuda_gpu()
+# 		y = Bool.(rand([0, 1], n, n))
+# 		ŷ = Bool.(rand([0, 1], n, n))
+# 		y_dtm = Bool.(rand([0, 1], n, n))
+# 		ŷ_dtm = Bool.(rand([0, 1], n, n))
+		
+# 		y_GPU = CuArray(y)
+# 		ŷ_GPU  = CuArray(ŷ)
+# 		y_dtm_GPU  = CuArray(y_dtm)
+# 		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+# 		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+# 		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+# 		@test	isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+# 	end
+# end
+
+# ╔═╡ e9473d2a-46e1-43fc-94a6-99c6b71252d4
+# let
+# 	if has_cuda_gpu()
+# 		y = Bool.(rand([0, 1], n, n, n))
+# 		ŷ = Bool.(rand([0, 1], n, n, n))
+# 		y_dtm = Bool.(rand([0, 1], n, n, n))
+# 		ŷ_dtm = Bool.(rand([0, 1], n, n, n))
+		
+# 		y_GPU = CuArray(y)
+# 		ŷ_GPU  = CuArray(ŷ)
+# 		y_dtm_GPU  = CuArray(y_dtm)
+# 		ŷ_dtm_GPU  = CuArray(ŷ_dtm)
+
+# 		rslt_cpu = hausdorff(ŷ, y, ŷ_dtm, y_dtm)
+# 		rslt_gpu = hausdorff(ŷ_GPU, y_GPU, ŷ_dtm_GPU, y_dtm_GPU)
+# 		@test	isapprox(rslt_cpu, rslt_gpu; rtol = 1e-10)
+# 	end
+# end
+
 # ╔═╡ Cell order:
 # ╠═9eacf83e-2da5-4e45-9c3f-5d1e243c925e
 # ╠═6a0f40ae-375d-4bf5-99ce-9a8872090ad3
@@ -232,7 +415,10 @@ end
 # ╠═d09dac60-9593-4596-ab2e-2bbea1e15cf2
 # ╟─153f3c85-b8a3-4699-8b96-91ee166b1e9c
 # ╠═a864253e-5a3a-4fdc-89e8-bfcacaaf1a8b
-# ╠═65a2ad53-0f4f-41e9-a5a5-54253eb0584c
+# ╟─e54e6ce7-2ff3-4505-937e-f62504f76613
+# ╠═d7261cc2-3b6b-4b0c-b223-faaac574caf2
+# ╟─a577ff0e-52a0-4518-a48b-164392266821
+# ╠═3dd96b72-c07f-487c-98b8-23bdcd58f7c7
 # ╟─739ee739-f528-4e6f-a935-8c8306c8c8db
 # ╟─3c78a53d-a54a-4fe1-904e-426435f4b5f1
 # ╠═29e10037-b40e-4838-bc0d-c7d04715b2d2
@@ -248,3 +434,10 @@ end
 # ╠═1687bf6a-ed40-49b5-a1cc-625907db2ce5
 # ╠═3ba5cc63-d8d6-4586-8e65-e5ec15d88c59
 # ╠═46349d0d-1e93-44b6-a58e-2d2f0f7f0c06
+# ╟─d9dbc443-1724-467f-8da8-c1e09ccd14f8
+# ╠═dab5a3d4-5e5d-4d57-8630-bfe59d6ce5cc
+# ╠═2cfd9b05-eb7e-4fd1-b09e-6349b45dc633
+# ╠═ce51a142-c6ff-41d6-b17c-63b30e1dadf2
+# ╠═9439da4e-aabd-4971-8d00-94c411aef2f1
+# ╠═7ce8d1f1-3be4-450d-9268-610fa7b0c02b
+# ╠═e9473d2a-46e1-43fc-94a6-99c6b71252d4
