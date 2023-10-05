@@ -2,7 +2,7 @@
 # v0.19.26
 
 #> [frontmatter]
-#> title = "ComputerVisionMetrics"
+#> title = "Losers"
 #> sidebar = "false"
 
 using Markdown
