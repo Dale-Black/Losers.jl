@@ -1,5 +1,8 @@
 """
-	dice(ŷ, y, ϵ=1e-5)
+## `dice_loss`
+```julia
+dice_loss(ŷ, y, ϵ=1e-5)
+```
 
 Simple dice loss function. Penalizes based on the overlap between predicted `ŷ` and ground truth `y`. A Dice coefficient of 1 corresponds to perfect overlap and is equal to a Dice loss of 0. A Dice coefficient of 0 corresponds to no overlap and is equal to a Dice loss of 1.
 
