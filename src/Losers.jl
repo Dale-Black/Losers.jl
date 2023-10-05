@@ -1,11 +1,7 @@
 module Losers
 using Statistics
 
-include("./dice.jl")
-include("./hausdorff.jl")
-
-export
-    dice,
-    hausdorff
+include("./dice_loss.jl")
+include("./hausdorff_loss.jl")
 
 end
