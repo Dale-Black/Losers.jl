@@ -40,7 +40,7 @@ hausdorff_loss(ŷ, y, ŷ_dtm, y_dtm)
 Dice loss can be computed similarly. Here's an example for 1D data:
 
 ```julia
-y = rand(n)
+y = rand([0, 1], n)
 ŷ = y
 dice_loss(ŷ, y)
 ```
