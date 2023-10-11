@@ -1,7 +1,7 @@
 # Losers
 Loss functions for segmentation tasks in the field of computer vision.
 
-[![Glass Notebook](https://img.shields.io/badge/Docs-Glass%20Notebook-aquamarine.svg)](https://glassnotebook.io/r/QU9DE9nl4P1y_1DhiK7Fp/docs/index.jl)
+[![Glass Notebook](https://img.shields.io/badge/Docs-Glass%20Notebook-aquamarine.svg)](https://glassnotebook.io/r/QU9DE9nl4P1y_1DhiK7Fp/index.jl)
 [![CI Stable](https://github.com/Dale-Black/Losers.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/Dale-Black/Losers.jl/actions/workflows/CI.yml)
 [![CI Nightly](https://github.com/Dale-Black/Losers.jl/actions/workflows/Nightly.yml/badge.svg?branch=master)](https://github.com/Dale-Black/Losers.jl/actions/workflows/Nightly.yml)
 [![Coverage](https://codecov.io/gh/Dale-Black/Losers.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/Dale-Black/Losers.jl)
