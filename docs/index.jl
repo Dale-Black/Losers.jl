@@ -2,8 +2,11 @@
 # v0.19.26
 
 #> [frontmatter]
-#> title = "Losers"
+#> title = "docs/Losers.jl"
 #> sidebar = "false"
+
+# "https://glassnotebook.io/r/QU9DE9nl4P1y_1DhiK7Fp/"
+# "https://glassnotebook.io/r/QU9DE9nl4P1y_1DhiK7Fp/docs/index.jl"
 
 using Markdown
 using InteractiveUtils
