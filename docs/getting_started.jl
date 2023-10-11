@@ -12,9 +12,8 @@ using InteractiveUtils
 # ╠═╡ show_logs = false
 begin
 	using Pkg
-	Pkg.activate(temp = true)
-	Pkg.add(url = "https://github.com/Dale-Black/Losers.jl")
-	Pkg.add(url = "https://github.com/Dale-Black/DistanceTransforms.jl")
+	Pkg.activate(".")
+	Pkg.instantiate()
 
 	using Losers
 	using DistanceTransforms: transform, Maurer # Losers pairs nicely with this library
@@ -30,7 +29,7 @@ ground_truth = rand([0, 1], 10, 10, 10);
 dice_loss(prediction, ground_truth)
 
 # ╔═╡ ef42160d-d599-42e1-95f2-be11e8e168e4
-prediction_dtm, ground_truth_dtm = transform(prediction, Maurer()), transform(ground_truth, Maurer())
+prediction_dtm, ground_truth_dtm = transform(prediction, Maurer()), transform(ground_truth, Maurer());
 
 # ╔═╡ 063e9158-50d8-41fc-a2f2-311b40caa376
 hausdorff_loss(prediction, ground_truth, prediction_dtm, ground_truth_dtm)
