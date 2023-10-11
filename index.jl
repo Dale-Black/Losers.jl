@@ -2,11 +2,8 @@
 # v0.19.26
 
 #> [frontmatter]
-#> title = "docs/Losers.jl"
+#> title = "Losers.jl"
 #> sidebar = "false"
-
-# "https://glassnotebook.io/r/QU9DE9nl4P1y_1DhiK7Fp/"
-# "https://glassnotebook.io/r/QU9DE9nl4P1y_1DhiK7Fp/docs/index.jl"
 
 using Markdown
 using InteractiveUtils
@@ -15,7 +12,7 @@ using InteractiveUtils
 # ╠═╡ show_logs = false
 begin
 	using Pkg
-	Pkg.activate(".")
+	Pkg.activate(joinpath(pwd(), "docs"))
 	Pkg.instantiate()
 
 	using HTMLStrings: to_html, head, link, script, divv, h1, img, p, span, a, figure, hr
@@ -78,13 +75,13 @@ end
 
 # ╔═╡ 6b5bbae5-95f4-4d1e-8c3f-03af6a584ebd
 article_list_tutorials = Article[
-	Article("Getting Started", "getting_started.jl", "https://img.freepik.com/free-photo/futuristic-spaceship-takes-off-into-purple-galaxy-fueled-by-innovation-generated-by-ai_24640-100023.jpg"),
-	Article("Advanced Usage", "advanced_usage.jl", "https://img.freepik.com/free-photo/vibrant-colors-flow-liquid-wave-pattern-generated-by-ai_188544-39060.jpg"),
+	Article("Getting Started", "docs/getting_started.jl", "https://img.freepik.com/free-photo/futuristic-spaceship-takes-off-into-purple-galaxy-fueled-by-innovation-generated-by-ai_24640-100023.jpg"),
+	Article("Advanced Usage", "docs/advanced_usage.jl", "https://img.freepik.com/free-photo/vibrant-colors-flow-liquid-wave-pattern-generated-by-ai_188544-39060.jpg"),
 ];
 
 # ╔═╡ 3b9b9f15-ca74-4f8b-9d13-c3d64c296cac
 article_list_api = Article[
-	Article("API", "api.jl", "https://img.freepik.com/free-photo/modern-technology-workshop-creativity-innovation-communication-development-generated-by-ai_188544-24548.jpg"),
+	Article("API", "docs/api.jl", "https://img.freepik.com/free-photo/modern-technology-workshop-creativity-innovation-communication-development-generated-by-ai_188544-24548.jpg"),
 ];
 
 # ╔═╡ 7ac4f52d-a3bf-405d-828b-5dbf486039a5
