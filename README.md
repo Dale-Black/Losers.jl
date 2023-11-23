@@ -26,12 +26,12 @@ using Losers
 The Hausdorff loss can be used to compute the loss between two data structures. Here's an example for 1D data:
 
 ```julia
-using DistanceTransforms: transform, Maurer # Losers pairs nicely with this library
+using DistanceTransforms: transform # Losers pairs nicely with this library
 
 y = rand([0, 1], n)
 ŷ = y
-y_dtm = transform(y, Maurer())
-ŷ_dtm = transform(ŷ, Maurer())
+y_dtm = transform(y)
+ŷ_dtm = transform(ŷ)
 hausdorff_loss(ŷ, y, ŷ_dtm, y_dtm)
 ```
 
