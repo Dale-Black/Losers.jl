@@ -4,7 +4,7 @@ using Test
 n = rand(10:100)
 
 @testset "Dice Loss 1D" begin
-	y = rand(n)
+	y = rand([0, 1], n)
 	ŷ = y
 	@test dice_loss(ŷ, y) == 0
 
@@ -14,7 +14,7 @@ n = rand(10:100)
 end
 
 @testset "Dice Loss 2D" begin
-	y = rand(n, n)
+	y = rand([0, 1], n, n)
 	ŷ = y
 	@test dice_loss(ŷ, y) == 0
 
@@ -24,7 +24,7 @@ end
 end
 
 @testset "Dice Loss 3D" begin
-	y = rand(n, n, n)
+	y = rand([0, 1], n, n, n)
 	ŷ = y
 	@test dice_loss(ŷ, y) == 0
 
