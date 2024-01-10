@@ -1,9 +1,8 @@
 ### A Pluto.jl notebook ###
-# v0.19.26
+# v0.19.36
 
 #> [frontmatter]
-#> title = "Losers.jl"
-#> sidebar = "false"
+#> title = "Home"
 
 using Markdown
 using InteractiveUtils
@@ -76,7 +75,6 @@ end
 # ╔═╡ 6b5bbae5-95f4-4d1e-8c3f-03af6a584ebd
 article_list_tutorials = Article[
 	Article("Getting Started", "docs/getting_started.jl", "https://img.freepik.com/free-photo/futuristic-spaceship-takes-off-into-purple-galaxy-fueled-by-innovation-generated-by-ai_24640-100023.jpg"),
-	Article("Advanced Usage", "docs/advanced_usage.jl", "https://img.freepik.com/free-photo/vibrant-colors-flow-liquid-wave-pattern-generated-by-ai_188544-39060.jpg"),
 ];
 
 # ╔═╡ 3b9b9f15-ca74-4f8b-9d13-c3d64c296cac
