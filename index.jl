@@ -11,8 +11,7 @@ using InteractiveUtils
 # ╠═╡ show_logs = false
 begin
 	using Pkg
-	# Pkg.activate(joinpath(pwd(), "docs"))
-	Pkg.activate(".")
+	Pkg.activate(joinpath(pwd(), "docs"))
 	Pkg.instantiate()
 
 	using HTMLStrings: to_html, head, link, script, divv, h1, img, p, span, a, figure, hr
